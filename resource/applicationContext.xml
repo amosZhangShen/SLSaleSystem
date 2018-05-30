@@ -1,0 +1,88 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:jdbc="http://www.springframework.org/schema/jdbc" xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xmlns:mybatis-spring="http://mybatis.org/schema/mybatis-spring"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+		http://www.springframework.org/schema/jdbc http://www.springframework.org/schema/jdbc/spring-jdbc.xsd
+		http://www.springframework.org/schema/mvc http://www.springframework.org/schema/mvc/spring-mvc.xsd
+		http://mybatis.org/schema/mybatis-spring http://mybatis.org/schema/mybatis-spring.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx.xsd">
+	<!-- 支持格式转换器 -->
+	<aop:aspectj-autoproxy  proxy-target-class="true"/>
+	<!-- 格式转换器 -->
+	<bean id="conversionService"
+		class="org.springframework.context.support.ConversionServiceFactoryBean">
+		<property name="converters">
+			<set>
+				<bean class="org.slsale.common.String2Date" />
+			</set>
+		</property>
+	</bean>
+		<!-- 开启注解支持 -->
+	<context:component-scan base-package="org.slsale.service" />
+	<context:component-scan base-package="org.slsale.dao" />
+
+	<!-- 读取Properties文件 -->
+	<context:property-placeholder location="classpath:jdbc.properties" />
+	<!-- JNDI数据源，连接池  scope:单例模式-->
+	<bean id="dataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close" scope="singleton">
+		<property name="driverClassName" value="${driverClassName}" />
+		<property name="url" value="${url}" />
+		<property name="username" value="${username}" />
+		<property name="password" value="${password}" />
+		<property name="initialSize" value="${initialSize}"/>
+		<property name="maxActive" value="${maxActive}"/>
+		<property name="maxWait" value="${maxWait}"/>
+		<property name="maxIdle" value="${maxIdle}"/>
+		<property name="minIdle" value="${minIdle}"/>
+		<!-- 当前空闲连接数< 2 && (当前活动数>最大活动数-3) -->
+      	<property name="removeAbandoned" value="${removeAbandoned}"/>
+      	
+      	<property name="removeAbandonedTimeout" value="${removeAbandonedTimeout}"/>
+      	<!-- sql心跳 ：保证连接池中连接是真实有效的连接-->
+      	<!-- testWhileIdle testOnBorrow testOnReturn 
+      	validationQuery-select 1
+      	 -->
+      	<!-- 开启Evict的定时校验，循环校验 -->
+      	<property name="testWhileIdle" value="true"/>
+      	<!-- 定义Evict的时间间隔，单位：毫秒，大于0才会开启evict -->
+      	<property name="timeBetweenEvictionRunsMillis" value="60000"/>
+      	<!-- 在进行borrowObject处理时，会对拿到的连接进行校验-false不校验 -->
+      	<property name="testOnBorrow" value="false"/>
+      	<!-- 在进行returnObject处理时，会对返回的连接进行校验-false不校验 -->
+      	<property name="testOnReturn" value="false"/>
+      	<!-- 校验使用的sql语句，validationQuery，复杂的校验sql会影响性能 -->
+      	<property name="validationQuery" value="select 1"/>
+      	<!-- 配置每次校验连接的数量，一般等于maxActive -->
+      	<property name="numTestsPerEvictionRun" value="${maxActive}"/>
+	</bean>
+	<!-- 集成mybatis -->
+	<bean id="sqlSessionFactory" class="org.mybatis.spring.SqlSessionFactoryBean">
+		<property name="dataSource" ref="dataSource" />
+		<property name="configLocation" value="classpath:spring-mybatis.xml"></property>
+	</bean>
+
+	<!-- 扫描接口并自动查找DAO接口同包内的mapperSQL映射文件 放置于IOC容器 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="org.slsale.dao" />
+		<property name="sqlSessionFactoryBeanName" value="sqlSessionFactory" />
+	</bean>
+
+
+	<!-- 声明式事务 -->
+	<!-- 定义事务管理器 -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<tx:annotation-driven transaction-manager="transactionManager" />
+
+
+</beans>
